@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasPermission, type Permission, PermissionError } from "@/lib/permissions";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import type { UserProfile } from "@/types/database";
 
@@ -65,10 +66,32 @@ export async function getApiContext(): Promise<ApiContext> {
 }
 
 export function apiError(error: unknown, status = 400) {
+  const resolvedStatus = error instanceof PermissionError ? 403 : status;
+
   return NextResponse.json(
     {
       message: error instanceof Error ? error.message : "Unexpected error.",
     },
-    { status },
+    { status: resolvedStatus },
   );
+}
+
+export async function requireApiPermission(permission: Permission) {
+  const context = await getApiContext();
+
+  if (!context.ok) {
+    return context;
+  }
+
+  if (!hasPermission(context.profile.role, permission)) {
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        { message: "You do not have permission to access this resource." },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return context;
 }

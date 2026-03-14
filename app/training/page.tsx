@@ -1,11 +1,15 @@
 import { updateTrainingRecordAction } from "@/app/actions";
+import { AccessNotice } from "@/components/AccessNotice";
 import { AppShell } from "@/components/AppShell";
 import { DistributionChart } from "@/components/DistributionChart";
 import { TrainingRecordForm } from "@/components/forms/TrainingRecordForm";
 import { getTrainingData } from "@/lib/data";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function TrainingPage() {
   const data = await getTrainingData();
+  const canAssignTraining = hasPermission(data.currentUser.profile.role, "assign_training");
+  const canEditTraining = hasPermission(data.currentUser.profile.role, "edit_training");
 
   return (
     <AppShell
@@ -41,17 +45,24 @@ export default async function TrainingPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="glass-panel rounded-[28px] p-6 sm:p-7">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-emerald-300">
-            Assign training
-          </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">Training records</h3>
-          <div className="mt-6">
-            <TrainingRecordForm
-              users={data.users.map((user) => ({ id: user.id, email: user.email }))}
-            />
-          </div>
-        </article>
+        {canAssignTraining ? (
+          <article className="glass-panel rounded-[28px] p-6 sm:p-7">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-emerald-300">
+              Assign training
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-white">Training records</h3>
+            <div className="mt-6">
+              <TrainingRecordForm
+                users={data.users.map((user) => ({ id: user.id, email: user.email }))}
+              />
+            </div>
+          </article>
+        ) : (
+          <AccessNotice
+            title="Training assignment is limited to admins."
+            description="Security analysts can update completion status for existing assignments, while viewer and staff accounts can review progress only."
+          />
+        )}
 
         <DistributionChart
           eyebrow="Completion chart"
@@ -77,39 +88,45 @@ export default async function TrainingPage() {
                     {row.completion_date ?? "Pending"}
                   </p>
                 </div>
-                <form
-                  action={async (formData) => {
-                    "use server";
-                    await updateTrainingRecordAction(row.id, {
-                      completion_status: formData.get("completion_status"),
-                      completion_date: formData.get("completion_date") || null,
-                    });
-                  }}
-                  className="flex flex-col gap-2 sm:flex-row sm:items-center"
-                >
-                  <select
-                    name="completion_status"
-                    defaultValue={row.completion_status}
-                    className="surface-input rounded-xl px-3 py-2 text-sm text-white"
+                {canEditTraining ? (
+                  <form
+                    action={async (formData) => {
+                      "use server";
+                      await updateTrainingRecordAction(row.id, {
+                        completion_status: formData.get("completion_status"),
+                        completion_date: formData.get("completion_date") || null,
+                      });
+                    }}
+                    className="flex flex-col gap-2 sm:flex-row sm:items-center"
                   >
-                    <option value="assigned">Assigned</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="overdue">Overdue</option>
-                  </select>
-                  <input
-                    name="completion_date"
-                    type="date"
-                    defaultValue={row.completion_date ?? ""}
-                    className="surface-input rounded-xl px-3 py-2 text-sm text-white"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-200 transition hover:bg-white/10"
-                  >
-                    Save
-                  </button>
-                </form>
+                    <select
+                      name="completion_status"
+                      defaultValue={row.completion_status}
+                      className="surface-input rounded-xl px-3 py-2 text-sm text-white"
+                    >
+                      <option value="assigned">Assigned</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="overdue">Overdue</option>
+                    </select>
+                    <input
+                      name="completion_date"
+                      type="date"
+                      defaultValue={row.completion_date ?? ""}
+                      className="surface-input rounded-xl px-3 py-2 text-sm text-white"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-200 transition hover:bg-white/10"
+                    >
+                      Save
+                    </button>
+                  </form>
+                ) : (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-300">
+                    View only
+                  </span>
+                )}
               </div>
             </article>
           ))}

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { requireUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { createRiskAssessmentSnapshot, summarizeBackupStatus } from "@/lib/risk";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import type {
@@ -156,7 +157,9 @@ export async function getOrgScopedData() {
   }
 
   const organizationId = currentUser.profile.organization_id!;
-  await createRiskAssessmentSnapshot(organizationId);
+  if (hasPermission(currentUser.profile.role, "run_risk_assessment")) {
+    await createRiskAssessmentSnapshot(organizationId);
+  }
 
   const users = await getUsersForOrganization(organizationId);
   const userIds = users.map((user) => user.id);
@@ -426,7 +429,9 @@ export async function getRiskData() {
     };
   }
 
-  await createRiskAssessmentSnapshot(currentUser.profile.organization_id!);
+  if (hasPermission(currentUser.profile.role, "run_risk_assessment")) {
+    await createRiskAssessmentSnapshot(currentUser.profile.organization_id!);
+  }
 
   const [historyResult, alertsResult] = await Promise.all([
     supabase

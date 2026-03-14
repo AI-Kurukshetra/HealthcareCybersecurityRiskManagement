@@ -70,8 +70,8 @@ export function RegisterForm() {
           className="w-full rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3.5 text-white outline-none transition focus:border-teal-300/40"
         >
           <option value="admin">Admin</option>
-          <option value="analyst">Analyst</option>
-          <option value="auditor">Auditor</option>
+          <option value="analyst">Security Analyst</option>
+          <option value="auditor">Viewer / Staff</option>
         </select>
       </div>
       {result ? (

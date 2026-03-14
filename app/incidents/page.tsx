@@ -1,10 +1,14 @@
+import { AccessNotice } from "@/components/AccessNotice";
 import { AppShell } from "@/components/AppShell";
 import { IncidentForm } from "@/components/forms/IncidentForm";
 import { updateIncidentStatusAction } from "@/app/actions";
 import { getOrgScopedData } from "@/lib/data";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function IncidentsPage() {
   const data = await getOrgScopedData();
+  const canCreateIncident = hasPermission(data.currentUser.profile.role, "create_incident");
+  const canEditIncident = hasPermission(data.currentUser.profile.role, "edit_incident");
 
   return (
     <AppShell
@@ -15,19 +19,26 @@ export default async function IncidentsPage() {
       notificationCount={data.openAlerts.length}
     >
       <section className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
-        <article className="glass-panel rounded-[28px] p-6 sm:p-7">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-orange-300">
-            Report incident
-          </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">Create incident record</h3>
-          <p className="mt-2 text-sm leading-7 text-slate-400">
-            Capture response notes early so the team has a shared record of severity, impact, and
-            containment state.
-          </p>
-          <div className="mt-6">
-            <IncidentForm />
-          </div>
-        </article>
+        {canCreateIncident ? (
+          <article className="glass-panel rounded-[28px] p-6 sm:p-7">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-orange-300">
+              Report incident
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-white">Create incident record</h3>
+            <p className="mt-2 text-sm leading-7 text-slate-400">
+              Capture response notes early so the team has a shared record of severity, impact, and
+              containment state.
+            </p>
+            <div className="mt-6">
+              <IncidentForm />
+            </div>
+          </article>
+        ) : (
+          <AccessNotice
+            title="Incident response is read-only for viewer and staff accounts."
+            description="You can review the incident queue and severity assignments, but only admins and security analysts can report incidents or update response status."
+          />
+        )}
 
         <article className="glass-panel rounded-[28px] p-6 sm:p-7">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-slate-400">
@@ -50,30 +61,36 @@ export default async function IncidentsPage() {
                       Severity {item.severity} | Created {new Date(item.created_at).toLocaleString()}
                     </p>
                   </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await updateIncidentStatusAction(item.id, formData.get("status") as string);
-                    }}
-                    className="flex flex-col gap-2 sm:flex-row sm:items-center"
-                  >
-                    <select
-                      name="status"
-                      defaultValue={item.status}
-                      className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white"
+                  {canEditIncident ? (
+                    <form
+                      action={async (formData) => {
+                        "use server";
+                        await updateIncidentStatusAction(item.id, formData.get("status") as string);
+                      }}
+                      className="flex flex-col gap-2 sm:flex-row sm:items-center"
                     >
-                      <option value="open">Open</option>
-                      <option value="investigating">Investigating</option>
-                      <option value="mitigated">Mitigated</option>
-                      <option value="closed">Closed</option>
-                    </select>
-                    <button
-                      type="submit"
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-200"
-                    >
-                      Save
-                    </button>
-                  </form>
+                      <select
+                        name="status"
+                        defaultValue={item.status}
+                        className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white"
+                      >
+                        <option value="open">Open</option>
+                        <option value="investigating">Investigating</option>
+                        <option value="mitigated">Mitigated</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-200"
+                      >
+                        Save
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-300">
+                      {item.status}
+                    </span>
+                  )}
                 </div>
               </article>
             ))}

@@ -3,9 +3,15 @@ import { AppShell } from "@/components/AppShell";
 import { Charts } from "@/components/Charts";
 import { DashboardCards } from "@/components/DashboardCards";
 import { getDashboardData } from "@/lib/data";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function DashboardPage() {
   const data = await getDashboardData();
+  const canEditAlerts = hasPermission(data.currentUser.profile.role, "edit_alert");
+  const canViewAuditStream = hasPermission(
+    data.currentUser.profile.role,
+    "view_dashboard_audit_stream",
+  );
 
   return (
     <AppShell
@@ -145,29 +151,35 @@ export default async function DashboardPage() {
                       Created {new Date(alert.created_at).toLocaleString()}
                     </p>
                   </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await updateAlertStatusAction(alert.id, formData.get("status") as string);
-                    }}
-                    className="flex flex-col gap-2 sm:flex-row sm:items-center"
-                  >
-                    <select
-                      name="status"
-                      defaultValue={alert.status}
-                      className="surface-input rounded-xl px-3 py-2 text-sm text-white"
+                  {canEditAlerts ? (
+                    <form
+                      action={async (formData) => {
+                        "use server";
+                        await updateAlertStatusAction(alert.id, formData.get("status") as string);
+                      }}
+                      className="flex flex-col gap-2 sm:flex-row sm:items-center"
                     >
-                      <option value="open">Open</option>
-                      <option value="acknowledged">Acknowledged</option>
-                      <option value="resolved">Resolved</option>
-                    </select>
-                    <button
-                      type="submit"
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-200 transition hover:bg-white/10"
-                    >
-                      Save
-                    </button>
-                  </form>
+                      <select
+                        name="status"
+                        defaultValue={alert.status}
+                        className="surface-input rounded-xl px-3 py-2 text-sm text-white"
+                      >
+                        <option value="open">Open</option>
+                        <option value="acknowledged">Acknowledged</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-200 transition hover:bg-white/10"
+                      >
+                        Save
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-300">
+                      {alert.status}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -202,30 +214,32 @@ export default async function DashboardPage() {
           )}
         </article>
 
-        <article className="glass-panel rounded-[28px] p-6 sm:p-7">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-slate-400">
-            Audit stream
-          </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">Recent platform activity</h3>
-          <div className="mt-6 space-y-4">
-            {data.auditLogs.map((log) => (
-              <div
-                key={`${log.created_at}-${log.action}`}
-                className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4"
-              >
-                <p className="text-sm font-medium text-white">{log.action.replaceAll(":", " / ")}</p>
-                <p className="mt-2 font-mono text-xs uppercase tracking-[0.18em] text-slate-500">
-                  {new Date(log.created_at).toLocaleString()}
+        {canViewAuditStream ? (
+          <article className="glass-panel rounded-[28px] p-6 sm:p-7">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-slate-400">
+              Audit stream
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-white">Recent platform activity</h3>
+            <div className="mt-6 space-y-4">
+              {data.auditLogs.map((log) => (
+                <div
+                  key={`${log.created_at}-${log.action}`}
+                  className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4"
+                >
+                  <p className="text-sm font-medium text-white">{log.action.replaceAll(":", " / ")}</p>
+                  <p className="mt-2 font-mono text-xs uppercase tracking-[0.18em] text-slate-500">
+                    {new Date(log.created_at).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+              {data.auditLogs.length === 0 ? (
+                <p className="text-sm text-slate-400">
+                  Audit activity will appear here once the team starts using the platform.
                 </p>
-              </div>
-            ))}
-            {data.auditLogs.length === 0 ? (
-              <p className="text-sm text-slate-400">
-                Audit activity will appear here once the team starts using the platform.
-              </p>
-            ) : null}
-          </div>
-        </article>
+              ) : null}
+            </div>
+          </article>
+        ) : null}
       </section>
     </AppShell>
   );

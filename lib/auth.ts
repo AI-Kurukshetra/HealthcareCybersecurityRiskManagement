@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { hasPermission, type Permission } from "@/lib/permissions";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import type { AuthContext, Organization, UserProfile } from "@/types/database";
 
@@ -56,6 +57,16 @@ export async function requireAdmin() {
 
   if (currentUser.profile.role !== "admin") {
     redirect("/dashboard");
+  }
+
+  return currentUser;
+}
+
+export async function requirePermission(permission: Permission, redirectTo = "/dashboard") {
+  const currentUser = await requireUser();
+
+  if (!hasPermission(currentUser.profile.role, permission)) {
+    redirect(redirectTo);
   }
 
   return currentUser;

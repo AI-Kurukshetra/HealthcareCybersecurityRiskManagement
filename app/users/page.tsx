@@ -2,6 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { updateUserRoleAction } from "@/app/actions";
 import { getOrganizationUsers } from "@/lib/data";
 import { requireAdmin } from "@/lib/auth";
+import { getRoleLabel } from "@/lib/permissions";
 
 export default async function UsersPage() {
   await requireAdmin();
@@ -26,10 +27,10 @@ export default async function UsersPage() {
               `Admin` can manage user roles and all security modules.
             </p>
             <p>
-              `Analyst` can work day-to-day on devices, vulnerabilities, incidents, compliance, and reports.
+              `Security Analyst` can work day-to-day on devices, vulnerabilities, incidents, compliance, reports, alerts, and audit review.
             </p>
             <p>
-              `Auditor` keeps read access for oversight and evidence review.
+              `Viewer / Staff` keeps read access for oversight and evidence review.
             </p>
           </div>
           <div className="mt-6 rounded-3xl border border-orange-400/20 bg-orange-400/8 p-5 text-sm text-slate-300">
@@ -63,7 +64,7 @@ export default async function UsersPage() {
                         {user.id === data.currentUser.profile.id ? "Current session" : "Organization member"}
                       </p>
                     </td>
-                    <td className="py-4 pr-5 capitalize">{user.role}</td>
+                    <td className="py-4 pr-5">{getRoleLabel(user.role)}</td>
                     <td className="py-4 pr-5">{new Date(user.created_at).toLocaleDateString()}</td>
                     <td className="py-4">
                       <form
@@ -79,8 +80,8 @@ export default async function UsersPage() {
                           className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white"
                         >
                           <option value="admin">Admin</option>
-                          <option value="analyst">Analyst</option>
-                          <option value="auditor">Auditor</option>
+                          <option value="analyst">Security Analyst</option>
+                          <option value="auditor">Viewer / Staff</option>
                         </select>
                         <button
                           type="submit"

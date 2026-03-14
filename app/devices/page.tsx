@@ -1,9 +1,12 @@
+import { AccessNotice } from "@/components/AccessNotice";
 import { AppShell } from "@/components/AppShell";
 import { DeviceForm } from "@/components/forms/DeviceForm";
 import { getOrgScopedData } from "@/lib/data";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function DevicesPage() {
   const data = await getOrgScopedData();
+  const canCreateDevice = hasPermission(data.currentUser.profile.role, "create_device");
 
   return (
     <AppShell
@@ -14,18 +17,25 @@ export default async function DevicesPage() {
       notificationCount={data.openAlerts.length}
     >
       <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="glass-panel rounded-[28px] p-6 sm:p-7">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-teal-300">
-            Add device
-          </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">Capture a new asset</h3>
-          <p className="mt-2 text-sm leading-7 text-slate-400">
-            Record medical devices, servers, workstations, and cloud assets with a current risk rating.
-          </p>
-          <div className="mt-6">
-            <DeviceForm />
-          </div>
-        </article>
+        {canCreateDevice ? (
+          <article className="glass-panel rounded-[28px] p-6 sm:p-7">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-teal-300">
+              Add device
+            </p>
+            <h3 className="mt-2 text-xl font-semibold text-white">Capture a new asset</h3>
+            <p className="mt-2 text-sm leading-7 text-slate-400">
+              Record medical devices, servers, workstations, and cloud assets with a current risk rating.
+            </p>
+            <div className="mt-6">
+              <DeviceForm />
+            </div>
+          </article>
+        ) : (
+          <AccessNotice
+            title="Device inventory is read-only for viewer and staff accounts."
+            description="You can review devices and their current risk levels, but only admins and security analysts can add or modify inventory records."
+          />
+        )}
 
         <article className="glass-panel rounded-[28px] p-6 sm:p-7">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-slate-400">

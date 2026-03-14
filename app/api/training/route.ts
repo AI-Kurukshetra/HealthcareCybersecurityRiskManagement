@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiError, getApiContext } from "@/lib/api";
+import { apiError, getApiContext, requireApiPermission } from "@/lib/api";
 import { createTrainingRecord, updateTrainingRecord } from "@/lib/mutations";
 import { createTrainingRecordSchema, updateTrainingRecordSchema } from "@/lib/validation";
 
@@ -31,6 +31,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const context = await requireApiPermission("assign_training");
+    if (!context.ok) {
+      return context.response;
+    }
+
     const payload = createTrainingRecordSchema.parse(await request.json());
     const data = await createTrainingRecord(payload);
     return NextResponse.json(data, { status: 201 });
@@ -41,6 +46,11 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const context = await requireApiPermission("edit_training");
+    if (!context.ok) {
+      return context.response;
+    }
+
     const payload = z
       .object({ id: z.uuid() })
       .and(updateTrainingRecordSchema)

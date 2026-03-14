@@ -1,5 +1,6 @@
 import "server-only";
 
+import { hasPermission, PermissionError, type Permission } from "@/lib/permissions";
 import { createServerSupabaseClient, isSupabaseConfigured } from "@/lib/supabaseClient";
 import { logUserActivity } from "@/lib/observability";
 import { createRiskAssessmentSnapshot } from "@/lib/risk";
@@ -29,7 +30,7 @@ import type {
   Vendor,
 } from "@/types/database";
 
-async function getActorContext() {
+async function getActorContext(permission?: Permission) {
   if (!isSupabaseConfigured()) {
     throw new Error("Supabase is not configured.");
   }
@@ -48,6 +49,10 @@ async function getActorContext() {
 
   if (!profile?.organization_id) {
     throw new Error("Your account is not assigned to an organization.");
+  }
+
+  if (permission && !hasPermission(profile.role, permission)) {
+    throw new PermissionError();
   }
 
   return {
@@ -136,7 +141,7 @@ async function syncBackupAlert(organizationId: string, status: BackupJob["status
 
 export async function createDevice(payload: unknown) {
   const input = createDeviceSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("create_device");
 
   const { data, error } = await supabase
     .from("devices")
@@ -164,7 +169,7 @@ export async function createDevice(payload: unknown) {
 
 export async function updateDevice(id: string, payload: unknown) {
   const input = updateDeviceSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("edit_device");
 
   const { data, error } = await supabase
     .from("devices")
@@ -189,7 +194,7 @@ export async function updateDevice(id: string, payload: unknown) {
 }
 
 export async function deleteDevice(id: string) {
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("delete_device");
   const { error } = await supabase.from("devices").delete().eq("id", id);
 
   if (error) {
@@ -207,7 +212,7 @@ export async function deleteDevice(id: string) {
 
 export async function createVulnerability(payload: unknown) {
   const input = createVulnerabilitySchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("create_vulnerability");
 
   const { data, error } = await supabase.from("vulnerabilities").insert(input).select().single();
 
@@ -231,7 +236,7 @@ export async function createVulnerability(payload: unknown) {
 
 export async function updateVulnerability(id: string, payload: unknown) {
   const input = updateVulnerabilitySchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("edit_vulnerability");
 
   const { data, error } = await supabase
     .from("vulnerabilities")
@@ -259,7 +264,7 @@ export async function updateVulnerability(id: string, payload: unknown) {
 }
 
 export async function deleteVulnerability(id: string) {
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("delete_vulnerability");
   const { error } = await supabase.from("vulnerabilities").delete().eq("id", id);
 
   if (error) {
@@ -280,7 +285,7 @@ export async function deleteVulnerability(id: string) {
 
 export async function createIncident(payload: unknown) {
   const input = createIncidentSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("create_incident");
 
   const { data, error } = await supabase
     .from("incidents")
@@ -312,7 +317,7 @@ export async function createIncident(payload: unknown) {
 
 export async function updateIncident(id: string, payload: unknown) {
   const input = updateIncidentSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("edit_incident");
 
   const { data, error } = await supabase
     .from("incidents")
@@ -340,7 +345,7 @@ export async function updateIncident(id: string, payload: unknown) {
 }
 
 export async function deleteIncident(id: string) {
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("delete_incident");
   const { error } = await supabase.from("incidents").delete().eq("id", id);
 
   if (error) {
@@ -361,7 +366,7 @@ export async function deleteIncident(id: string) {
 
 export async function createComplianceCheck(payload: unknown) {
   const input = createComplianceCheckSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("create_compliance_check");
 
   const { data, error } = await supabase
     .from("compliance_checks")
@@ -389,7 +394,7 @@ export async function createComplianceCheck(payload: unknown) {
 
 export async function updateComplianceCheck(id: string, payload: unknown) {
   const input = updateComplianceCheckSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("edit_compliance_check");
 
   const { data, error } = await supabase
     .from("compliance_checks")
@@ -414,7 +419,7 @@ export async function updateComplianceCheck(id: string, payload: unknown) {
 }
 
 export async function deleteComplianceCheck(id: string) {
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("delete_compliance_check");
   const { error } = await supabase.from("compliance_checks").delete().eq("id", id);
 
   if (error) {
@@ -431,11 +436,7 @@ export async function deleteComplianceCheck(id: string) {
 }
 
 export async function updateUserRole(userId: string, role: UserRole) {
-  const { supabase, profile } = await getActorContext();
-
-  if (profile.role !== "admin") {
-    throw new Error("Only organization admins can manage user roles.");
-  }
+  const { supabase, profile } = await getActorContext("manage_users");
 
   if (profile.id === userId && role !== "admin") {
     throw new Error("You cannot remove your own admin access.");
@@ -471,7 +472,7 @@ export async function updateUserRole(userId: string, role: UserRole) {
 
 export async function createVendor(payload: unknown) {
   const input = createVendorSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("create_vendor");
   const { data, error } = await supabase
     .from("vendors")
     .insert({
@@ -498,7 +499,7 @@ export async function createVendor(payload: unknown) {
 
 export async function updateVendor(id: string, payload: unknown) {
   const input = updateVendorSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("edit_vendor");
   const { data, error } = await supabase
     .from("vendors")
     .update(input)
@@ -522,7 +523,7 @@ export async function updateVendor(id: string, payload: unknown) {
 }
 
 export async function deleteVendor(id: string) {
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("delete_vendor");
   const { error } = await supabase.from("vendors").delete().eq("id", id);
 
   if (error) {
@@ -540,7 +541,7 @@ export async function deleteVendor(id: string) {
 
 export async function createTrainingRecord(payload: unknown) {
   const input = createTrainingRecordSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("assign_training");
   const { data: assignee } = await supabase.from("users").select("*").eq("id", input.user_id).single();
 
   if (!assignee || assignee.organization_id !== profile.organization_id) {
@@ -570,7 +571,7 @@ export async function createTrainingRecord(payload: unknown) {
 
 export async function updateTrainingRecord(id: string, payload: unknown) {
   const input = updateTrainingRecordSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("edit_training");
 
   if (input.user_id) {
     const { data: assignee } = await supabase.from("users").select("*").eq("id", input.user_id).single();
@@ -604,7 +605,7 @@ export async function updateTrainingRecord(id: string, payload: unknown) {
 
 export async function createBackupJob(payload: unknown) {
   const input = createBackupJobSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("create_backup_job");
   const { data, error } = await supabase
     .from("backup_jobs")
     .insert({
@@ -634,7 +635,7 @@ export async function createBackupJob(payload: unknown) {
 
 export async function updateBackupJob(id: string, payload: unknown) {
   const input = updateBackupJobSchema.parse(payload);
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("edit_backup_job");
   const { data, error } = await supabase
     .from("backup_jobs")
     .update(input)
@@ -661,7 +662,7 @@ export async function updateBackupJob(id: string, payload: unknown) {
 }
 
 export async function updateSecurityAlertStatus(id: string, status: SecurityAlertStatus) {
-  const { supabase, profile } = await getActorContext();
+  const { supabase, profile } = await getActorContext("edit_alert");
   const normalizedStatus = securityAlertStatusSchema.parse(status);
   const { data, error } = await supabase
     .from("security_alerts")

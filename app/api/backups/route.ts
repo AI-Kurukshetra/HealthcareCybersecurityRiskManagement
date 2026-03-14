@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiError, getApiContext } from "@/lib/api";
+import { apiError, getApiContext, requireApiPermission } from "@/lib/api";
 import { createBackupJob, updateBackupJob } from "@/lib/mutations";
 import { createBackupJobSchema, updateBackupJobSchema } from "@/lib/validation";
 
@@ -25,6 +25,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const context = await requireApiPermission("create_backup_job");
+    if (!context.ok) {
+      return context.response;
+    }
+
     const payload = createBackupJobSchema.parse(await request.json());
     const data = await createBackupJob(payload);
     return NextResponse.json(data, { status: 201 });
@@ -35,6 +40,11 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const context = await requireApiPermission("edit_backup_job");
+    if (!context.ok) {
+      return context.response;
+    }
+
     const payload = z.object({ id: z.uuid() }).and(updateBackupJobSchema).parse(await request.json());
     const { id, ...changes } = payload;
     const data = await updateBackupJob(id, changes);

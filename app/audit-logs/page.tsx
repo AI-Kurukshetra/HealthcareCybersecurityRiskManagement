@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { requirePermission } from "@/lib/auth";
 import { getAuditActivityData } from "@/lib/data";
 import { auditLogQuerySchema } from "@/lib/validation";
 
@@ -7,6 +8,7 @@ interface AuditLogsPageProps {
 }
 
 export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps) {
+  await requirePermission("view_audit_logs");
   const params = auditLogQuerySchema.parse(await searchParams);
   const data = await getAuditActivityData(params);
 

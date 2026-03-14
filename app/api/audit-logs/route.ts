@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiError, getApiContext } from "@/lib/api";
+import { apiError, requireApiPermission } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
-  const context = await getApiContext();
+  const context = await requireApiPermission("view_audit_logs");
   if (!context.ok) {
     return context.response;
   }

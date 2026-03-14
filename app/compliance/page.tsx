@@ -1,10 +1,17 @@
+import { AccessNotice } from "@/components/AccessNotice";
 import { AppShell } from "@/components/AppShell";
 import { ComplianceForm } from "@/components/forms/ComplianceForm";
 import { updateComplianceCheckAction } from "@/app/actions";
 import { getDashboardData } from "@/lib/data";
+import { hasPermission } from "@/lib/permissions";
 
 export default async function CompliancePage() {
   const data = await getDashboardData();
+  const canCreateCompliance = hasPermission(
+    data.currentUser.profile.role,
+    "create_compliance_check",
+  );
+  const canEditCompliance = hasPermission(data.currentUser.profile.role, "edit_compliance_check");
 
   return (
     <AppShell
@@ -27,7 +34,14 @@ export default async function CompliancePage() {
             and remediation progress.
           </p>
           <div className="mt-6">
-            <ComplianceForm />
+            {canCreateCompliance ? (
+              <ComplianceForm />
+            ) : (
+              <AccessNotice
+                title="Control creation is limited to admins."
+                description="Security analysts can update existing compliance checks, and viewer or staff accounts can review status and score trends."
+              />
+            )}
           </div>
         </article>
 
@@ -49,41 +63,47 @@ export default async function CompliancePage() {
                       Score {item.score} | Status {item.status.replaceAll("_", " ")}
                     </p>
                   </div>
-                  <form
-                    action={async (formData) => {
-                      "use server";
-                      await updateComplianceCheckAction(item.id, {
-                        status: formData.get("status"),
-                        score: Number(formData.get("score")),
-                      });
-                    }}
-                    className="flex flex-col gap-2 sm:flex-row sm:items-center"
-                  >
-                    <select
-                      name="status"
-                      defaultValue={item.status}
-                      className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white"
+                  {canEditCompliance ? (
+                    <form
+                      action={async (formData) => {
+                        "use server";
+                        await updateComplianceCheckAction(item.id, {
+                          status: formData.get("status"),
+                          score: Number(formData.get("score")),
+                        });
+                      }}
+                      className="flex flex-col gap-2 sm:flex-row sm:items-center"
                     >
-                      <option value="compliant">Compliant</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="at_risk">At risk</option>
-                      <option value="non_compliant">Non-compliant</option>
-                    </select>
-                    <input
-                      name="score"
-                      type="number"
-                      min={0}
-                      max={100}
-                      defaultValue={item.score}
-                      className="w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white sm:w-24"
-                    />
-                    <button
-                      type="submit"
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-200"
-                    >
-                      Save
-                    </button>
-                  </form>
+                      <select
+                        name="status"
+                        defaultValue={item.status}
+                        className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white"
+                      >
+                        <option value="compliant">Compliant</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="at_risk">At risk</option>
+                        <option value="non_compliant">Non-compliant</option>
+                      </select>
+                      <input
+                        name="score"
+                        type="number"
+                        min={0}
+                        max={100}
+                        defaultValue={item.score}
+                        className="w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-sm text-white sm:w-24"
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-[0.18em] text-slate-200"
+                      >
+                        Save
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-300">
+                      {item.status.replaceAll("_", " ")}
+                    </span>
+                  )}
                 </div>
               </article>
             ))}
